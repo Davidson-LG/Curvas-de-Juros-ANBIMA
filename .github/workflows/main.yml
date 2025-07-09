@@ -1,0 +1,23 @@
+name: Rodar curvas diariamente
+
+on:
+  schedule:
+    - cron: "0 11 * * 1-5" # 8h no horário de Brasília (UTC-3)
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Instalar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Instalar dependências
+        run: pip install pyield matplotlib pandas xlsxwriter
+      - name: Rodar script
+        run: python curvas_diarias.py
+      - name: Upload do gráfico
+        uses: actions/upload-artifact@v3
+        with:
+          name: grafico-ettj
+          path: ettj_comparacao_pyield.png
