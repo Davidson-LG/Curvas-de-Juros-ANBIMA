@@ -1,0 +1,60 @@
+!pip install anbima-data pyield matplotlib pandas xlsxwriter
+
+from pyield.anbima import intraday_ettj, last_ettj
+import matplotlib.pyplot as plt
+import pandas as pd
+import datetime
+from pyield import bday
+
+# Datas
+hoje = datetime.date.today()
+
+# Curva de hoje
+df_hoje = intraday_ettj()
+df_hoje["Data"] = hoje
+
+# Curva do último dia útil (ontem útil)
+df_ontem = last_ettj()
+df_ontem["Data"] = pd.to_datetime(df_ontem["date"]).dt.date
+ontem = df_ontem["Data"].max()
+
+def processar(df):
+    return df[["vertex", "nominal_rate", "real_rate", "Data"]] \
+             .rename(columns={"vertex": "Vértice", 
+                              "nominal_rate": "ETTJ Nominal",
+                              "real_rate": "ETTJ Real"})
+
+df_hoje_proc = processar(df_hoje)
+df_ontem_proc = processar(df_ontem)
+
+df_total = pd.concat([df_ontem_proc, df_hoje_proc], ignore_index=True)
+df_total["Inflação Implícita"] = ((1 + df_total["ETTJ Nominal"]) / (1 + df_total["ETTJ Real"])) - 1
+
+# Define cores e estilos fixos para os dias
+cores = {ontem: "blue", hoje: "orange"}
+linhas = {ontem: "dashed", hoje: "solid"}
+marcadores = {ontem: "o", hoje: "s"}
+
+def plotar_curva(coluna, titulo, ylabel):
+    plt.figure(figsize=(10, 5))
+    for data, grupo in df_total.groupby("Data"):
+        plt.plot(grupo["Vértice"], grupo[coluna]*100,
+                 label=data.strftime("%d/%m/%Y"),
+                 color=cores[data],
+                 linestyle=linhas[data],
+                 linewidth=2.5,
+                 marker=marcadores[data],
+                 markersize=6)
+    plt.title(titulo, fontsize=16, weight="bold")
+    plt.xlabel("Vértice (anos)", fontsize=14)
+    plt.ylabel(ylabel, fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+# Gráficos melhorados
+plotar_curva("ETTJ Real", "ETTJ Real – Curva de Juros IPCA", "Juro Real (%)")
+plotar_curva("ETTJ Nominal", "ETTJ Nominal – Curva Pré-fixada", "Juro Nominal (%)")
+plotar_curva("Inflação Implícita", "Inflação Implícita – por Vértice", "Inflação (%)")
+
